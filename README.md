@@ -10,12 +10,12 @@ Copy the key into 'hueconf'
 
 
 ## Setup the python3 environment:
-python -m venv venv
-pip install -r requirements.txt
+python -m venv venv\
+pip install -r requirements.txt\
 source venv/bin/activate
 
 
-Run and debug with:
+Run and debug with:\
 venv/bin/gunicorn --workers 4 --max-requests-jitter 100 --access-logfile logs/access.log --error-logfile logs/error.log --bind "192.168.0.100:8099" flaskhue:app
 
 
