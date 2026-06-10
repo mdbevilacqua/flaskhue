@@ -1,6 +1,6 @@
 # Simple Flask WebUI Example for Controlling Philips Hue Lights via Bridge API
 
-Specifying the list of lights for this app is done within the code itself. Configuration would be better. . .
+Specifying the list of lights for this app is done within the code itself. Configuration file would be cleaner. You can easily search current lights using the is_on.sh utility.
 
 ## Linux Setup:
 
@@ -8,9 +8,11 @@ Install jq(1). Setup your hue bridge API key using the key_gen.sh script.
 
 ```
 bash key_gen.sh
+
+bash is_on.sh
 ```
 
-Copy the key into 'hueconf'
+Copy the key intoconf'
 
 
 ## Setup the python3 environment:
