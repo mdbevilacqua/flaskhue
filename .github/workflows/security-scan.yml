@@ -1,0 +1,62 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 4 * * 1'   # Weekly on Monday at 4 AM UTC
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # Required to upload results to GitHub Security tab
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'   # Adjust if you use a different version
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install bandit safety
+
+      # ================== Bandit SAST (Code Security) ==================
+      - name: Run Bandit Security Scan
+        run: |
+          bandit -r . \
+            --exclude venv,env,__pycache__,.git \
+            -f sarif \
+            -o bandit-results.sarif \
+            --severity-level high \
+            || true   # Change to false if you want the build to fail on findings
+
+      - name: Upload Bandit Results to GitHub
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: bandit-results.sarif
+
+      # ================== Dependency Vulnerability Scan ==================
+      - name: Check dependencies with Safety
+        run: |
+          safety check --file requirements.txt --output safety-results.json || true
+
+      # ================== Optional: CodeQL (Deeper Analysis) ==================
+      # Uncomment the section below for more powerful analysis
+
+      # - name: Initialize CodeQL
+      #   uses: github/codeql-action/init@v3
+      #   with:
+      #     languages: python
+      #     queries: security-extended
+
+      # - name: Perform CodeQL Analysis
+      #   uses: github/codeql-action/analyze@v3
