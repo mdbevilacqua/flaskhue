@@ -1,0 +1,69 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:   # Allows manual trigger from GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      # Optional: Run tests / security scan before deploy
+      - name: Install dependencies and test
+        run: |
+          pip install -r requirements.txt
+          # Add pytest or other tests here if you have them
+
+      # ================== Deploy via SSH ==================
+      - name: Deploy to Remote Server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || '22' }}
+          script: |
+            set -e  # Exit on any error
+
+            # Define deployment path on server
+            DEPLOY_PATH="/srv/http/flaskhue"   # Change this to your preferred path
+
+            echo "=== Creating directories ==="
+            mkdir -p $DEPLOY_PATH/logs $DEPLOY_PATH/venv
+
+            echo "=== Copying new code ==="
+            # Since we're inside SSH, we can rsync or git pull.
+            # Option A: Git pull (recommended if repo is on server)
+            cd $DEPLOY_PATH
+            # git pull origin main || (git clone https://github.com/mdbevilacqua/flaskhue.git . && git checkout main)
+
+            # Option B: If you prefer SCP/rsync instead of git:
+            rsync -av --delete --exclude='.git' --exclude='venv' ./ user@server:$DEPLOY_PATH/
+
+            echo "=== Setting up virtual environment ==="
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt gunicorn
+
+            echo "=== Restarting service ==="
+            # Restart using systemd (recommended)
+            sudo systemctl restart flaskhue.service
+
+            # Alternative: manual gunicorn restart
+            # pkill -f gunicorn || true
+            # nohup venv/bin/gunicorn --workers 4 --max-requests-jitter 100 \
+            #   --access-logfile logs/access.log --error-logfile logs/error.log \
+            #   --bind "0.0.0.0:8099" flaskhue:app > /dev/null 2>&1 &
+
+            echo "=== Deployment completed successfully ==="
